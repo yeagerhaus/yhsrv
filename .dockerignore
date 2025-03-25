@@ -1,0 +1,18 @@
+# Ignore binary and build files
+/bin/
+/tmp/
+/build/
+*.exe
+*.o
+*.a
+
+# Ignore Go module cache
+/pkg/
+/.cache/
+
+# Ignore system files
+.DS_Store
+
+# Ignore editor/IDE config
+.idea/
+.vscode/

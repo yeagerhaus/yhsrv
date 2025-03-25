@@ -1,0 +1,38 @@
+# Binaries and build artifacts
+/bin/
+/tmp/
+/out/
+/build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.a
+
+# Go-related files
+*.test
+*.prof
+*.cover
+*.sum
+*.mod
+/vendor/
+debug/
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS system files
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
+*.cache
+*.pid
+
+# Ignore music folder
+/internal/music/
