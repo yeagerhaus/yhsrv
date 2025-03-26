@@ -1,6 +1,6 @@
 # Define the image name
-IMAGE_NAME = go-server
-CONTAINER_NAME = go-server-container
+IMAGE_NAME = yhsrv
+CONTAINER_NAME = yhsrv
 PORT = 8080
 
 # Build the Docker image
