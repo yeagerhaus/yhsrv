@@ -11,7 +11,7 @@ import (
 
 // GetTracks handles GET /tracks
 func GetTracks(ctx *gserv.Context) gserv.Response {
-	tracks, err := utils.GetTracksFromDirectory("./music")
+	tracks, err := utils.GetTracksFromDirectory("./internal/music")
 	if err != nil {
 		return gserv.NewJSONErrorResponse(http.StatusInternalServerError, "Failed to fetch tracks")
 	}
@@ -37,7 +37,7 @@ func StreamTrack(ctx *gserv.Context) gserv.Response {
 	}
 
 	// Serve the audio file dynamically
-	filePath := filepath.Join("./music", track.Album, track.Name)
+	filePath := filepath.Join("./music", track.Album, track.Title)
 	return gserv.NewJSONResponse(filePath)
 }
 

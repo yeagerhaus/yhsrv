@@ -25,6 +25,9 @@ WORKDIR /root/
 # Copy the built binary from the builder stage
 COPY --from=builder /app/server .
 
+# Copy the music folder explicitly
+COPY --from=builder /app/internal/music /root/internal/music
+
 # Expose the application's port
 EXPOSE 8080
 
