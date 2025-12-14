@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: yhsrv-postgres
+    environment:
+      POSTGRES_USER: yhsrv
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: yhsrv
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yhsrv"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  yhsrv:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: yhsrv
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - DATABASE_URL=postgresql://yhsrv:password@postgres:5432/yhsrv
+      - MUSIC_ROOT_PATH=/music
+      - TRANSCODE_CACHE_PATH=/cache/transcodes
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${MUSIC_LIBRARY_PATH:-./music}:/music:ro
+      - transcode_cache:/cache/transcodes
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  transcode_cache:
+
