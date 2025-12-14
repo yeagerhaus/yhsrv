@@ -4,7 +4,7 @@
  */
 
 import { db } from '../adapters/database.js';
-import { updateDeezerSyncState } from '../../../src/services/sync/deezer.js';
+import { updateDeezerSyncState } from '../../../../src/services/sync/deezer.js';
 import type { SyncState, ArtistState } from './types.js';
 
 // In-memory state cache (loaded from DB on demand)

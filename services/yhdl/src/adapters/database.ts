@@ -4,8 +4,8 @@
  * Adapts yhdl's database needs to use the shared music server database.
  */
 
-import { db } from '../../../src/db/index.js';
-import type { Database } from '../../../src/db/schema.js';
+import { db } from '../../../../src/db/index.js';
+import type { Database } from '../../../../src/db/schema.js';
 
 // Re-export database for yhdl to use
 export { db };

@@ -4,7 +4,7 @@
  * Adapts yhdl's configuration needs to use the shared music server config.
  */
 
-import { config } from '../../../src/config/index.js';
+import { config } from '../../../../src/config/index.js';
 
 export interface Config {
 	musicRootPath: string;

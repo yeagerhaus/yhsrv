@@ -5,10 +5,10 @@
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js",
-    "migrate": "tsx src/db/migrate.ts",
+    "build": "tsc && tsc-alias",
+    "dev": "bun --watch src/server.ts",
+    "start": "bun dist/server.js",
+    "migrate": "bun src/db/migrate.ts",
     "test": "vitest"
   },
   "keywords": [
@@ -23,33 +23,33 @@
     "@fastify/cors": "^9.0.1",
     "@fastify/multipart": "^8.0.1",
     "@fastify/static": "^7.0.0",
-    "fastify": "^4.26.2",
-    "pg": "^8.11.3",
-    "kysely": "^0.27.2",
-    "fluent-ffmpeg": "^2.1.3",
-    "music-metadata": "^8.1.4",
-    "dotenv": "^16.4.5",
-    "node-cron": "^3.0.3",
     "axios": "^1.7.2",
-    "zod": "^3.23.8",
     "cli-progress": "^3.12.0",
     "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.26.2",
+    "fluent-ffmpeg": "^2.1.3",
     "got": "^14.4.5",
+    "kysely": "^0.27.2",
+    "music-metadata": "^8.1.4",
+    "node-cron": "^3.0.3",
     "node-id3": "^0.2.6",
     "ora": "^9.0.0",
+    "pg": "^8.11.3",
     "picocolors": "^1.1.1",
-    "tough-cookie": "^5.1.2"
+    "tough-cookie": "^5.1.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
+    "@types/cli-progress": "^3.11.6",
     "@types/fluent-ffmpeg": "^2.1.24",
+    "@types/node": "^20.14.10",
     "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.11.0",
-    "@types/cli-progress": "^3.11.6",
     "@types/tough-cookie": "^4.0.5",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3",
     "vitest": "^1.6.0"
   }
 }
-

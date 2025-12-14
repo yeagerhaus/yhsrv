@@ -5,6 +5,7 @@
 
 import { getYhdlConfig } from './adapters/config.js';
 import type { Config } from './adapters/config.js';
+import path from 'path';
 
 // Re-export config functions that maintain compatibility
 export function loadConfig(): Config {
@@ -41,8 +42,6 @@ export function clearArl(): void {
  */
 export function getEnvPathForDisplay(): string {
 	// Return path to root .env file
-	// Using dynamic import for path module
-	const path = await import('path');
 	return path.join(process.cwd(), '.env');
 }
 

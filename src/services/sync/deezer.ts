@@ -1,7 +1,7 @@
 import { db } from '../../db/index.js';
 import { config } from '../../config/index.js';
 import { randomUUID } from 'crypto';
-import { syncLibrary, type SyncOptions, type SyncResult } from '../../../../services/yhdl/src/index.js';
+import { syncLibrary, type SyncOptions, type SyncResult } from '../../../services/yhdl/src/index.js';
 
 export interface DeezerSyncResult {
   artistsChecked: number;
@@ -29,7 +29,7 @@ export async function syncDeezerLibrary(options: Partial<SyncOptions> = {}): Pro
   }
 
   // Import TrackFormats to get the correct numeric values
-  const { TrackFormats } = await import('../../../../services/yhdl/src/deezer/types.js');
+  const { TrackFormats } = await import('../../../services/yhdl/src/deezer/types.js');
   
   // Convert bitrate format if needed - yhdl uses numeric TrackFormats
   let bitrate: number | undefined = options.bitrate as number | undefined;
@@ -74,7 +74,7 @@ export async function syncDeezerArtist(artistId: string): Promise<DeezerSyncResu
   }
 
   // Import TrackFormats for FLAC constant
-  const { TrackFormats } = await import('../../../../services/yhdl/src/deezer/types.js');
+  const { TrackFormats } = await import('../../../services/yhdl/src/deezer/types.js');
   
   // Sync specific artist using yhdl
   const syncOptions: SyncOptions = {
