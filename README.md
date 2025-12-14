@@ -125,7 +125,13 @@ See `.env.example` for all available configuration options:
 
 ## yhdl Integration
 
-The yhdl code should be integrated into `src/yhdl/` directory. See `src/yhdl/README.md` for integration instructions.
+The yhdl code should be integrated into `services/yhdl/` directory. See `services/yhdl/INTEGRATION.md` for detailed integration instructions.
+
+**Quick Start:**
+1. Copy your yhdl repository contents into `services/yhdl/src/`
+2. Follow the refactoring guide in `services/yhdl/INTEGRATION.md`
+3. Update `services/yhdl/src/index.ts` to export the actual yhdl functions
+4. The service will automatically use the shared database and configuration
 
 Once integrated, the Deezer sync endpoints will be fully functional.
 

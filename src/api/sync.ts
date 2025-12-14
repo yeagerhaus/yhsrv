@@ -1,15 +1,27 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { syncDeezerLibrary, syncDeezerArtist } from '../services/sync/index.js';
+import type { SyncOptions } from '../../services/yhdl/src/index.js';
 
 interface SyncParams {
   id: string;
 }
 
+interface SyncBody {
+  fullSync?: boolean;
+  dryRun?: boolean;
+  concurrency?: number;
+}
+
 export async function syncRoutes(fastify: FastifyInstance) {
   // POST /api/sync/deezer - Trigger Deezer library sync
-  fastify.post('/sync/deezer', async (request, reply) => {
+  fastify.post<{ Body?: SyncBody }>('/sync/deezer', async (request, reply) => {
     try {
-      const result = await syncDeezerLibrary();
+      const options: Partial<SyncOptions> = {
+        fullSync: request.body?.fullSync || false,
+        dryRun: request.body?.dryRun || false,
+        concurrency: request.body?.concurrency,
+      };
+      const result = await syncDeezerLibrary(options);
       return {
         success: true,
         ...result,

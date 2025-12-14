@@ -17,6 +17,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - yhsrv-network
 
   yhsrv:
     build:
@@ -38,6 +40,22 @@ services:
       - ${MUSIC_LIBRARY_PATH:-./music}:/music:ro
       - transcode_cache:/cache/transcodes
     restart: unless-stopped
+    networks:
+      - yhsrv-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: yhsrv-cloudflared
+    depends_on:
+      - yhsrv
+    command: tunnel --url http://yhsrv:8080
+    restart: unless-stopped
+    networks:
+      - yhsrv-network
+
+networks:
+  yhsrv-network:
+    driver: bridge
 
 volumes:
   postgres_data:
