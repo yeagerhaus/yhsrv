@@ -215,6 +215,41 @@ async function checkDocker() {
   }
 }
 
+/**
+ * Extract Cloudflared tunnel URL from logs
+ */
+async function getCloudflaredUrl(dockerComposeFile: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const proc = spawn('docker-compose', ['-f', dockerComposeFile, 'logs', 'cloudflared'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let output = '';
+    proc.stdout?.on('data', (data) => {
+      output += data.toString();
+    });
+
+    proc.stderr?.on('data', (data) => {
+      output += data.toString();
+    });
+
+    proc.on('close', () => {
+      // Look for the URL pattern in the logs
+      // Cloudflared outputs: "https://something.trycloudflare.com"
+      const urlMatch = output.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+      if (urlMatch) {
+        resolve(urlMatch[0]);
+      } else {
+        resolve(null);
+      }
+    });
+
+    proc.on('error', () => {
+      resolve(null);
+    });
+  });
+}
+
 async function setupDocker() {
   log('\n🐳 Setting up Docker containers...\n', 'cyan');
 
@@ -243,6 +278,22 @@ async function setupDocker() {
       success('Database migrations completed in container');
     } else {
       warning('Migration in container may have failed - check logs');
+    }
+    
+    // Try to get Cloudflared URL
+    info('Checking for Cloudflared tunnel URL...');
+    await new Promise(resolve => setTimeout(resolve, 3000)); // Give cloudflared time to start
+    const tunnelUrl = await getCloudflaredUrl(dockerComposeFile);
+    if (tunnelUrl) {
+      log('\n🌐 Cloudflared Tunnel URL:', 'cyan');
+      log(`   ${tunnelUrl}`, 'bright');
+      log('\n   You can access the API at:', 'cyan');
+      log(`   ${tunnelUrl}/api/health`, 'green');
+      log(`   ${tunnelUrl}/api/library/stats`, 'green');
+      log('\n');
+    } else {
+      warning('Could not find Cloudflared tunnel URL in logs');
+      info('Check logs with: docker-compose -f docker/docker-compose.yml logs cloudflared');
     }
     
     return true;

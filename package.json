@@ -11,6 +11,7 @@
     "dev": "bun --watch src/server.ts",
     "start": "bun dist/src/server.js",
     "migrate": "bun dist/src/db/migrate.js",
+    "tunnel-url": "docker-compose -f docker/docker-compose.yml logs cloudflared 2>&1 | grep -o 'https://[a-z0-9-]*\\.trycloudflare\\.com' | head -1",
     "test": "vitest"
   },
   "keywords": [

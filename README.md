@@ -1,28 +1,29 @@
 # YH Music Server
 
-A self-hosted music server with advanced features like Sonic Analysis, Sweet Fades, and Spotify/Deezer integration. Built with TypeScript, Fastify, PostgreSQL, and FFmpeg.
+A self-hosted music server with advanced features like Sonic Analysis, Sweet Fades, and Spotify/Deezer integration. Built with TypeScript, Bun, Fastify, PostgreSQL, and FFmpeg.
 
 ## Features
 
 - **Music Streaming**: Stream tracks with HTTP range request support
-- **Audio Transcoding**: On-demand transcoding from FLAC to MP3 (320kbps, 128kbps)
-- **Sonic Analysis**: Extract BPM, key, energy, danceability, and more from audio files
+- **Audio Transcoding**: On-demand transcoding from FLAC to MP3/M4A/AAC (320kbps, 128kbps)
+- **Sonic Analysis**: Extract BPM, key, energy, danceability, valence, and more from audio files
 - **Sweet Fades**: Seamless crossfades between tracks in playlists
 - **Spotify Integration**: OAuth authentication and metadata syncing
-- **Deezer Integration**: Library synchronization via yhdl
-- **Library Management**: Automatic scanning and indexing of music files
-- **Lossless Audio Support**: Full support for FLAC and other lossless formats
+- **Deezer Integration**: Library synchronization via yhdl (subprocess mode)
+- **Library Management**: Automatic scanning and indexing of music files (scans on startup)
+- **Lossless Audio Support**: Full support for FLAC and other lossless formats with ffprobe fallback
+- **Cloudflared Tunnel**: Optional public access via Cloudflare tunnel
 
 ## Prerequisites
 
-- Node.js 20+
+- **Bun** 1.0+ (recommended) or Node.js 20+
 - PostgreSQL 16+
-- FFmpeg
+- FFmpeg and FFprobe
 - Docker and Docker Compose (for containerized deployment)
 
-## Installation
+## Quick Start
 
-### Using Docker Compose (Recommended)
+### Automated Setup (Recommended)
 
 1. Clone the repository:
 ```bash
@@ -30,45 +31,91 @@ git clone <repository-url>
 cd yhsrv
 ```
 
-2. Create `.env` file from `.env.example`:
+2. Create and configure `.env` file:
 ```bash
 cp .env.example .env
+# Edit .env with your configuration
 ```
 
-3. Edit `.env` and configure:
-   - Database credentials
-   - Music library path
-   - Spotify OAuth credentials
-   - Deezer ARL token (optional)
-
-4. Start services:
+3. Run the setup script:
 ```bash
-docker-compose -f docker/docker-compose.yml up -d
+bun run setup
 ```
 
-5. Initialize database schema:
+This will:
+- Check prerequisites (FFmpeg, PostgreSQL, Docker)
+- Install dependencies
+- Create necessary directories
+- Run database migrations
+- Optionally set up Docker containers
+
+### Using Docker Compose
+
+1. Configure your `.env` file (see Configuration section)
+
+2. Update the music library path in `docker/docker-compose.yml`:
+```yaml
+volumes:
+  - /path/to/your/music:/music:ro  # Update this path
+```
+
+3. Run setup with Docker:
 ```bash
-docker-compose -f docker/docker-compose.yml exec yhsrv npm run migrate
+bun run setup:docker
+```
+
+The setup script will automatically:
+- Build and start all containers
+- Run database migrations
+- Display the Cloudflared tunnel URL (if enabled)
+
+**Example output:**
+```
+🌐 Cloudflared Tunnel URL:
+   https://noted-chuck-lucky-nothing.trycloudflare.com
+
+   You can access the API at:
+   https://noted-chuck-lucky-nothing.trycloudflare.com/api/health
+   https://noted-chuck-lucky-nothing.trycloudflare.com/api/library/stats
+```
+
+Or manually:
+```bash
+# Build and start services
+docker-compose -f docker/docker-compose.yml up -d --build
+
+# Run migrations
+docker-compose -f docker/docker-compose.yml exec yhsrv bun run migrate
+
+# Get Cloudflared tunnel URL
+bun run tunnel-url
+
+# Scan your library
+curl -X POST http://localhost:8080/api/library/scan
 ```
 
 ### Manual Installation
 
-1. Install dependencies:
+1. Install Bun: https://bun.sh
+
+2. Install dependencies:
 ```bash
-npm install
+bun install
 ```
 
-2. Set up environment variables (see `.env.example`)
+3. Set up environment variables (see `.env.example`)
 
-3. Initialize database:
+4. Ensure PostgreSQL is running and accessible
+
+5. Initialize database:
 ```bash
-npm run migrate
+bun run migrate
 ```
 
-4. Build and start:
+6. Build and start:
 ```bash
-npm run build
-npm start
+bun run build
+bun start
 ```
 
 ## Configuration
@@ -81,99 +128,184 @@ See `.env.example` for all available configuration options:
 - `MUSIC_ROOT_PATH`: Path to your music library
 - `SPOTIFY_CLIENT_ID`: Spotify OAuth client ID
 - `SPOTIFY_CLIENT_SECRET`: Spotify OAuth client secret
-- `DEEZER_ARL`: Deezer ARL token for yhdl integration
-- `FFMPEG_PATH`: Path to FFmpeg binary (default: `/usr/bin/ffmpeg`)
+- `SPOTIFY_REDIRECT_URI`: Spotify OAuth redirect URI (must match your app settings)
+- `DEEZER_ARL`: Deezer ARL token for yhdl integration (optional)
+- `FFMPEG_PATH`: Path to FFmpeg binary (default: `ffmpeg`)
+- `FFPROBE_PATH`: Path to FFprobe binary (default: `ffprobe`)
+- `DEFAULT_TRANSCODE_BITRATE`: Default bitrate for transcoding (default: `320`)
+- `SUPPORTED_FORMATS`: Comma-separated list of supported formats (default: `flac,mp3,m4a,aac,ogg,wav`)
+- `SKIP_STARTUP_SCAN`: Set to `true` to skip automatic library scan on startup (default: `false`)
+
+### Docker Configuration
+
+The Docker setup includes:
+- **PostgreSQL**: Database server
+- **yhsrv**: Main application server
+- **cloudflared**: Optional Cloudflare tunnel for public access
+
+Update the music library mount path in `docker/docker-compose.yml` to match your system.
 
 ## API Endpoints
 
+### Health & Status
+- `GET /api/health` - Health check endpoint
+
 ### Library Management
-- `GET /api/library/stats` - Get library statistics
-- `POST /api/library/scan` - Trigger library scan
+- `GET /api/library/stats` - Get library statistics (tracks, artists, albums, file sizes)
+- `POST /api/library/scan` - Trigger library scan to index music files
 
 ### Tracks
 - `GET /api/tracks` - List all tracks (with pagination and filters)
+  - Query params: `page`, `limit`, `artist`, `album`, `format`
 - `GET /api/tracks/:id` - Get track details
-- `GET /api/tracks/:id/analysis` - Get sonic analysis for track
+- `GET /api/tracks/:id/analysis` - Get sonic analysis for track (BPM, key, energy, etc.)
 
 ### Artists
-- `GET /api/artists` - List all artists
+- `GET /api/artists` - List all artists (with pagination)
+  - Query params: `page`, `limit`, `search`
 - `GET /api/artists/:id` - Get artist with albums and tracks
 
 ### Albums
-- `GET /api/albums` - List all albums
-- `GET /api/albums/:id` - Get album with tracks
+- `GET /api/albums` - List all albums (with pagination)
+  - Query params: `page`, `limit`, `search`
+- `GET /api/albums/:id` - Get album with tracks (ordered by disc/track number)
 
 ### Streaming
-- `GET /api/stream/:id?format=mp3&bitrate=320` - Stream track (with optional transcoding)
+- `GET /api/stream/:id` - Stream track with HTTP range support
+  - Query params: `format` (mp3, m4a, aac), `bitrate` (128, 320, etc.)
+  - Supports on-the-fly transcoding (FLAC → MP3, etc.)
 
-### Playlists
+### Playlists (Sweet Fades)
 - `POST /api/playlist/stream` - Create and stream playlist with crossfades
+  - Body: `{ track_ids: string[], fade?: boolean, duration?: number }`
 
 ### Spotify Integration
-- `GET /api/auth/spotify` - Initiate Spotify OAuth
-- `GET /api/auth/spotify/callback` - OAuth callback handler
+- `GET /api/auth/spotify` - Initiate Spotify OAuth flow
+- `GET /api/auth/spotify/callback` - Handle OAuth callback
 - `POST /api/spotify/sync/track/:id` - Sync track metadata from Spotify
 - `POST /api/spotify/sync/artist/:id` - Sync artist metadata from Spotify
+- `POST /api/spotify/sync/artist/:id/tracks` - Sync all tracks for an artist from Spotify
 
 ### Deezer Sync
 - `POST /api/sync/deezer` - Trigger Deezer library sync
+  - Body: `{ fullSync?: boolean, dryRun?: boolean, concurrency?: number }`
 - `POST /api/sync/deezer/artist/:id` - Sync specific artist from Deezer
 - `GET /api/sync/status` - Get sync status
 
-### Health Check
-- `GET /api/health` - Health check endpoint
-
 ## yhdl Integration
 
-The yhdl code should be integrated into `services/yhdl/` directory. See `services/yhdl/INTEGRATION.md` for detailed integration instructions.
+yhsrv integrates with [yhdl](https://github.com/yeagerhaus/yhdl) for Deezer library synchronization. Currently, yhdl runs as a subprocess (CLI mode).
 
-**Quick Start:**
-1. Copy your yhdl repository contents into `services/yhdl/src/`
-2. Follow the refactoring guide in `services/yhdl/INTEGRATION.md`
-3. Update `services/yhdl/src/index.ts` to export the actual yhdl functions
-4. The service will automatically use the shared database and configuration
+**Current Status:**
+- yhdl is called as a subprocess for Deezer sync operations
+- Configuration is passed via environment variables
+- Sync state is managed in the yhsrv database
 
-Once integrated, the Deezer sync endpoints will be fully functional.
+**Future Enhancement:**
+Once yhdl is enhanced as a library (see `YHDL_LIBRARY_ENHANCEMENT_PLAN.md`), it will be imported directly for better integration and type safety.
+
+**Setup:**
+1. Ensure `DEEZER_ARL` is set in your `.env` file
+2. Optionally set `YHDL_PATH` if yhdl is installed in a non-standard location
+3. Use the sync endpoints to trigger library synchronization
 
 ## Development
 
 ```bash
 # Development mode with hot reload
-npm run dev
+bun run dev
 
-# Build
-npm run build
+# Build TypeScript
+bun run build
 
 # Run migrations
-npm run migrate
+bun run migrate
 
 # Run tests
-npm test
+bun test
+
+# Setup script (checks prerequisites, installs deps, runs migrations)
+bun run setup
+
+# Docker-only setup (automatically displays Cloudflared URL)
+bun run setup:docker
+
+# Get Cloudflared tunnel URL (if using Docker)
+bun run tunnel-url
 ```
 
 ## Docker Commands
 
 ```bash
-# Build image
-docker build -f docker/Dockerfile -t yhsrv .
+# Build and start all services
+docker-compose -f docker/docker-compose.yml up -d --build
 
-# Start services
-docker-compose -f docker/docker-compose.yml up -d
+# Get Cloudflared tunnel URL (quick command)
+bun run tunnel-url
 
 # View logs
 docker-compose -f docker/docker-compose.yml logs -f yhsrv
 
+# View Cloudflared logs (to see tunnel URL)
+docker-compose -f docker/docker-compose.yml logs cloudflared
+
+# View all logs
+docker-compose -f docker/docker-compose.yml logs -f
+
 # Stop services
 docker-compose -f docker/docker-compose.yml down
+
+# Restart a service
+docker-compose -f docker/docker-compose.yml restart yhsrv
+
+# Execute commands in container
+docker-compose -f docker/docker-compose.yml exec yhsrv bun run migrate
+docker-compose -f docker/docker-compose.yml exec yhsrv sh
+
+# Rebuild after code changes
+docker-compose -f docker/docker-compose.yml up -d --build
 ```
+
+## Troubleshooting
+
+### FLAC Files Not Scanning
+
+If some FLAC files fail with "Invalid FLAC preamble" errors:
+- The scanner automatically falls back to `ffprobe` for metadata extraction
+- Ensure `ffprobe` is installed and accessible
+- Check that the files are valid FLAC files (not corrupted)
+
+### Cloudflared Tunnel Not Working
+
+- The tunnel URL changes each time cloudflared restarts
+- Get the current URL: `bun run tunnel-url`
+- Or check logs: `docker-compose -f docker/docker-compose.yml logs cloudflared`
+- The setup script automatically displays the URL when starting Docker
+- For a permanent URL, set up a named Cloudflare tunnel with an account
+
+### Database Connection Issues
+
+- Ensure PostgreSQL is running and accessible
+- Check `DATABASE_URL` in your `.env` file
+- For Docker: ensure the `postgres` service is healthy before starting `yhsrv`
+
+### Music Library Not Found
+
+- Verify the path in `MUSIC_ROOT_PATH` (or `docker-compose.yml` for Docker)
+- Ensure the path is accessible and contains audio files
+- Check file permissions
 
 ## Architecture
 
+- **Runtime**: Bun (fast JavaScript runtime)
 - **API Server**: Fastify REST API
 - **Database**: PostgreSQL with Kysely query builder
-- **Audio Processing**: FFmpeg for transcoding and analysis
-- **Metadata**: music-metadata for ID3 tag reading
-- **Integrations**: Spotify OAuth + API, Deezer via yhdl
+- **Audio Processing**: FFmpeg/FFprobe for transcoding and analysis
+- **Metadata**: music-metadata library with ffprobe fallback
+- **Integrations**: 
+  - Spotify OAuth + API
+  - Deezer via yhdl (subprocess mode)
+- **Tunneling**: Cloudflared for optional public access
 
 ## License
 

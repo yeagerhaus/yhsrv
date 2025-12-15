@@ -1,5 +1,7 @@
 import { readdir, stat } from 'fs/promises';
 import { join, extname } from 'path';
+import { spawn } from 'child_process';
+import { promisify } from 'util';
 // @ts-ignore - music-metadata has conditional exports that TypeScript struggles with
 import { parseFile } from 'music-metadata';
 import { db } from '../../db/index.js';
@@ -118,27 +120,137 @@ async function getOrCreateAlbum(
   return albumId;
 }
 
+/**
+ * Extract metadata using ffprobe as fallback when music-metadata fails
+ */
+async function extractMetadataWithFFprobe(filePath: string): Promise<{
+  title: string;
+  artist: string;
+  album: string;
+  trackNumber: number | null;
+  discNumber: number | null;
+  releaseDate: string | null;
+  duration: number | null;
+}> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('ffprobe', [
+      '-v', 'quiet',
+      '-print_format', 'json',
+      '-show_format',
+      '-show_streams',
+      filePath,
+    ]);
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`ffprobe failed: ${stderr}`));
+        return;
+      }
+
+      try {
+        const data = JSON.parse(stdout);
+        const format = data.format || {};
+        const tags = format.tags || {};
+        const audioStream = data.streams?.find((s: any) => s.codec_type === 'audio');
+
+        // Extract metadata from tags
+        const title = tags.TITLE || tags.title || 'Unknown Title';
+        const artist = tags.ARTIST || tags.artist || 'Unknown Artist';
+        const album = tags.ALBUM || tags.album || 'Unknown Album';
+        const trackNumber = tags.TRACK || tags.track ? parseInt(String(tags.TRACK || tags.track).split('/')[0], 10) : null;
+        const discNumber = tags.DISC || tags.disc ? parseInt(String(tags.DISC || tags.disc).split('/')[0], 10) : null;
+        const releaseDate = tags.DATE || tags.date || tags.YEAR || tags.year || null;
+        const duration = format.duration ? Math.round(parseFloat(format.duration)) : null;
+
+        resolve({
+          title,
+          artist,
+          album,
+          trackNumber: isNaN(trackNumber!) ? null : trackNumber,
+          discNumber: isNaN(discNumber!) ? null : discNumber,
+          releaseDate,
+          duration,
+        });
+      } catch (error) {
+        reject(new Error(`Failed to parse ffprobe output: ${error instanceof Error ? error.message : String(error)}`));
+      }
+    });
+
+    proc.on('error', (error) => {
+      reject(new Error(`Failed to run ffprobe: ${error.message}`));
+    });
+  });
+}
+
 async function processTrack(filePath: string): Promise<{ added: boolean; updated: boolean }> {
   try {
-    const metadata = await parseFile(filePath);
+    let metadata: any;
+    let useFFprobe = false;
+
+    // Try music-metadata first
+    try {
+      metadata = await parseFile(filePath);
+    } catch (error) {
+      // If music-metadata fails (e.g., "Invalid FLAC preamble"), fall back to ffprobe
+      if (error instanceof Error && error.message.includes('FLAC preamble')) {
+        console.warn(`music-metadata failed for ${filePath}, using ffprobe fallback`);
+        useFFprobe = true;
+      } else {
+        throw error;
+      }
+    }
+
     const stats = await stat(filePath);
 
-    const title = metadata.common.title || 'Unknown Title';
-    const artist = metadata.common.artist || 'Unknown Artist';
-    const album = metadata.common.album || 'Unknown Album';
-    const trackNumber = metadata.common.track?.no || null;
-    const discNumber = metadata.common.disk?.no || null;
-    const releaseDate = metadata.common.date || metadata.common.originaldate || null;
-    const duration = metadata.format.duration ? Math.round(metadata.format.duration) : null;
+    let title: string;
+    let artist: string;
+    let album: string;
+    let trackNumber: number | null;
+    let discNumber: number | null;
+    let releaseDate: string | null;
+    let duration: number | null;
+
+    if (useFFprobe) {
+      // Use ffprobe fallback
+      const ffprobeMetadata = await extractMetadataWithFFprobe(filePath);
+      title = ffprobeMetadata.title;
+      artist = ffprobeMetadata.artist;
+      album = ffprobeMetadata.album;
+      trackNumber = ffprobeMetadata.trackNumber;
+      discNumber = ffprobeMetadata.discNumber;
+      releaseDate = ffprobeMetadata.releaseDate;
+      duration = ffprobeMetadata.duration;
+    } else {
+      // Use music-metadata result
+      title = metadata.common.title || 'Unknown Title';
+      artist = metadata.common.artist || 'Unknown Artist';
+      album = metadata.common.album || 'Unknown Album';
+      trackNumber = metadata.common.track?.no || null;
+      discNumber = metadata.common.disk?.no || null;
+      releaseDate = metadata.common.date || metadata.common.originaldate || null;
+      duration = metadata.format.duration ? Math.round(metadata.format.duration) : null;
+    }
 
     // Get or create artist
     const artistId = await getOrCreateArtist(artist);
 
     // Get or create album
-    const artworkUrl = metadata.common.picture?.[0] 
+    // Note: artwork detection from ffprobe would require additional parsing
+    const artworkUrl = !useFFprobe && metadata?.common?.picture?.[0] 
       ? `/api/artwork/${encodeURIComponent(filePath)}` 
       : null;
-    const albumId = await getOrCreateAlbum(album, artistId, releaseDate, artworkUrl || undefined);
+    const albumId = await getOrCreateAlbum(album, artistId, releaseDate || undefined, artworkUrl || undefined);
 
     // Generate track ID from file path hash or use UUID
     const trackId = randomUUID();
