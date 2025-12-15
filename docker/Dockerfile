@@ -1,40 +1,46 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
-
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package.json ./
+# Copy lockfile if it exists (optional)
+COPY bun.lockb* ./
 
 # Install dependencies
-RUN npm install
+RUN bun install
 
 # Copy source code
 COPY . .
 
 # Build TypeScript
-RUN npm run build
+RUN bun run build
 
 # Stage 2: Runtime
-FROM node:20-alpine
+FROM oven/bun:1-alpine
 
 # Install FFmpeg and runtime dependencies
 RUN apk add --no-cache \
     ffmpeg \
-    ffmpeg-dev \
+    postgresql-client \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# Copy package files and install production dependencies only
+# Copy package files
 COPY package.json ./
-RUN npm ci --only=production --ignore-scripts
+# Copy lockfile if it exists (optional)
+COPY bun.lockb* ./
+
+# Install production dependencies only
+RUN bun install --production
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
+
+# Copy any necessary config files
+COPY --from=builder /app/tsconfig.json ./
 
 # Create directories for music and cache
 RUN mkdir -p /music /cache/transcodes
@@ -44,8 +50,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD bun -e "fetch('http://localhost:8080/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 # Start server
-CMD ["node", "dist/server.js"]
-
+CMD ["bun", "dist/src/server.js"]

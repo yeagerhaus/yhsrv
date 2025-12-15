@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { config } from './config/index.js';
 import { initializeDatabase, closeDatabase } from './db/index.js';
 import { registerRoutes } from './api/index.js';
+import { initializeYhdlConfig } from './services/sync/yhdl-wrapper.js';
 
 const server = Fastify({
   logger: {
@@ -15,6 +16,10 @@ async function start() {
     // Initialize database
     await initializeDatabase();
     console.log('Database initialized');
+
+    // Initialize yhdl configuration
+    initializeYhdlConfig();
+    console.log('yhdl configuration initialized');
 
     // Register CORS
     await server.register(cors, {

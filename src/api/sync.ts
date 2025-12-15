@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { syncDeezerLibrary, syncDeezerArtist } from '../services/sync/index.js';
-import type { SyncOptions } from '../../services/yhdl/src/index.js';
+import type { SyncOptions } from '../services/sync/yhdl-wrapper.js';
 
 interface SyncParams {
   id: string;

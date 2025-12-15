@@ -2,6 +2,7 @@
 /bin/
 /tmp/
 /build/
+dist/
 *.exe
 *.o
 *.a
@@ -9,6 +10,11 @@
 # Ignore Go module cache
 /pkg/
 /.cache/
+/cache/
+
+# Ignore dependencies
+node_modules/
+bun.lockb
 
 # Ignore system files
 .DS_Store
@@ -16,3 +22,15 @@
 # Ignore editor/IDE config
 .idea/
 .vscode/
+
+# Ignore environment files (will be passed via env_file)
+.env
+.env.local
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore test files
+*.test.ts
+*.spec.ts

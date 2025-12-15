@@ -165,8 +165,9 @@ async function extractAdvancedMetrics(filePath: string): Promise<Partial<SonicAn
         }
 
         // Estimate danceability based on energy and tempo (simplified)
-        if (metrics.energy !== null && metrics.tempo !== null) {
-          metrics.danceability = Math.min(1, (metrics.energy * 0.7) + (metrics.tempo > 120 ? 0.3 : 0));
+        if (metrics.energy !== null && metrics.tempo !== null && metrics.tempo !== undefined) {
+          const tempo = metrics.tempo;
+          metrics.danceability = Math.min(1, (metrics.energy * 0.7) + (tempo > 120 ? 0.3 : 0));
         } else {
           metrics.danceability = metrics.energy || 0.5;
         }

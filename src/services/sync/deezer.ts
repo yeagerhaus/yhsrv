@@ -1,7 +1,6 @@
 import { db } from '../../db/index.js';
 import { config } from '../../config/index.js';
-import { randomUUID } from 'crypto';
-import { syncLibrary, type SyncOptions, type SyncResult } from '../../../services/yhdl/src/index.js';
+import { syncLibrary, type SyncOptions, type SyncResult, updateDeezerSyncState } from './yhdl-wrapper.js';
 
 export interface DeezerSyncResult {
   artistsChecked: number;
@@ -28,29 +27,20 @@ export async function syncDeezerLibrary(options: Partial<SyncOptions> = {}): Pro
     throw new Error('DEEZER_ARL not configured');
   }
 
-  // Import TrackFormats to get the correct numeric values
-  const { TrackFormats } = await import('../../../services/yhdl/src/deezer/types.js');
-  
-  // Convert bitrate format if needed - yhdl uses numeric TrackFormats
-  let bitrate: number | undefined = options.bitrate as number | undefined;
+  // Convert bitrate format if needed
+  let bitrate: number | string | undefined = options.bitrate;
   if (!bitrate) {
-    bitrate = TrackFormats.FLAC; // FLAC default
-  } else if (typeof bitrate === 'string') {
-    // Convert string format to TrackFormats constant
-    bitrate = bitrate === 'flac' ? TrackFormats.FLAC : 
-               bitrate === 'mp3' ? TrackFormats.MP3_320 : 
-               TrackFormats.MP3_128;
+    bitrate = 'flac'; // FLAC default
   }
 
   const syncOptions: SyncOptions = {
     musicRootPath: config.music.rootPath,
-    bitrate,
     concurrency: config.deezer.syncConcurrency,
     checkIntervalHours: config.deezer.syncCheckInterval,
     fullSync: false,
     dryRun: false,
     ...options,
-    bitrate, // Override with converted value
+    bitrate, // Use converted value
   };
 
   const result = await syncLibrary(syncOptions);
@@ -73,13 +63,10 @@ export async function syncDeezerArtist(artistId: string): Promise<DeezerSyncResu
     throw new Error(`Artist not found: ${artistId}`);
   }
 
-  // Import TrackFormats for FLAC constant
-  const { TrackFormats } = await import('../../../services/yhdl/src/deezer/types.js');
-  
   // Sync specific artist using yhdl
   const syncOptions: SyncOptions = {
     musicRootPath: config.music.rootPath,
-    bitrate: TrackFormats.FLAC,
+    bitrate: 'flac',
     concurrency: 1,
     checkIntervalHours: 0, // Force check
     fullSync: true,
@@ -105,47 +92,6 @@ export async function syncDeezerArtist(artistId: string): Promise<DeezerSyncResu
   }
 }
 
-// Update sync state for Deezer
-export async function updateDeezerSyncState(
-  artistId: string,
-  status: 'pending' | 'syncing' | 'completed' | 'failed',
-  errorMessage?: string
-): Promise<void> {
-  const existing = await db
-    .selectFrom('sync_state')
-    .select('id')
-    .where('artist_id', '=', artistId)
-    .where('source', '=', 'deezer')
-    .executeTakeFirst();
-
-  if (existing) {
-    await db
-      .updateTable('sync_state')
-      .set({
-        last_checked: new Date(),
-        last_synced: status === 'completed' ? new Date() : undefined,
-        status,
-        error_message: errorMessage || null,
-        updated_at: new Date(),
-      })
-      .where('id', '=', existing.id)
-      .execute();
-  } else {
-    const id = randomUUID();
-    await db
-      .insertInto('sync_state')
-      .values({
-        id,
-        artist_id: artistId,
-        source: 'deezer',
-        last_checked: new Date(),
-        last_synced: status === 'completed' ? new Date() : null,
-        status,
-        error_message: errorMessage || null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      })
-      .execute();
-  }
-}
+// Re-export updateDeezerSyncState from wrapper
+export { updateDeezerSyncState };
 

@@ -1,5 +1,6 @@
 import { readdir, stat } from 'fs/promises';
 import { join, extname } from 'path';
+// @ts-ignore - music-metadata has conditional exports that TypeScript struggles with
 import { parseFile } from 'music-metadata';
 import { db } from '../../db/index.js';
 import { config } from '../../config/index.js';
@@ -137,7 +138,7 @@ async function processTrack(filePath: string): Promise<{ added: boolean; updated
     const artworkUrl = metadata.common.picture?.[0] 
       ? `/api/artwork/${encodeURIComponent(filePath)}` 
       : null;
-    const albumId = await getOrCreateAlbum(album, artistId, releaseDate, artworkUrl);
+    const albumId = await getOrCreateAlbum(album, artistId, releaseDate, artworkUrl || undefined);
 
     // Generate track ID from file path hash or use UUID
     const trackId = randomUUID();

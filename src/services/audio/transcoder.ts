@@ -165,8 +165,8 @@ export async function getStreamableTrack(
     throw new Error(`Track not found: ${trackId}`);
   }
 
-  const sourceFormat = track.format.toLowerCase();
-  const targetFormat = (format || sourceFormat).toLowerCase() as 'mp3' | 'm4a' | 'aac';
+  const sourceFormat = track.format.toLowerCase() as string;
+  const targetFormat = (format || sourceFormat).toLowerCase() as string;
   const targetBitrate = bitrate || config.audio.defaultTranscodeBitrate;
 
   // If source format matches target and no bitrate change needed, return original
@@ -179,7 +179,10 @@ export async function getStreamableTrack(
   }
 
   // If source is FLAC or format/bitrate change needed, transcode
-  if (sourceFormat === 'flac' || sourceFormat !== targetFormat) {
+  const needsTranscode = sourceFormat === 'flac' || 
+    (sourceFormat !== targetFormat && ['mp3', 'm4a', 'aac'].includes(targetFormat));
+  
+  if (needsTranscode) {
     const transcodeResult = await transcodeTrack(trackPath, trackId, {
       format: targetFormat as 'mp3' | 'm4a' | 'aac',
       bitrate: targetBitrate,
