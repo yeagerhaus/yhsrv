@@ -211,27 +211,49 @@ Once yhdl is enhanced as a library (see `YHDL_LIBRARY_ENHANCEMENT_PLAN.md`), it 
 
 ## Development
 
+### Local Development (without Docker)
 ```bash
-# Development mode with hot reload
+# Development mode with hot reload (runs locally, requires local PostgreSQL)
 bun run dev
 
 # Build TypeScript
 bun run build
 
-# Run migrations
+# Run migrations (local database)
 bun run migrate
 
 # Run tests
 bun test
+```
 
-# Setup script (checks prerequisites, installs deps, runs migrations)
+### Docker Development (recommended)
+```bash
+# Initial setup (one-time, builds containers and runs migrations)
+bun run setup:docker
+
+# Start/restart containers (use this for daily development)
+bun run docker:up
+
+# Stop containers
+bun run docker:down
+
+# View logs
+bun run docker:logs
+
+# Restart a specific service
+bun run docker:restart yhsrv
+
+# Get Cloudflared tunnel URL
+bun run tunnel-url
+```
+
+### Setup Scripts
+```bash
+# Full setup (checks prerequisites, installs deps, runs migrations)
 bun run setup
 
 # Docker-only setup (automatically displays Cloudflared URL)
 bun run setup:docker
-
-# Get Cloudflared tunnel URL (if using Docker)
-bun run tunnel-url
 ```
 
 ## Docker Commands

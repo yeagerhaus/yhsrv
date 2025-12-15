@@ -11,6 +11,10 @@
     "dev": "bun --watch src/server.ts",
     "start": "bun dist/src/server.js",
     "migrate": "bun dist/src/db/migrate.js",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up -d --build",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "docker:logs": "docker-compose -f docker/docker-compose.yml logs -f",
+    "docker:restart": "docker-compose -f docker/docker-compose.yml restart",
     "tunnel-url": "docker-compose -f docker/docker-compose.yml logs cloudflared 2>&1 | grep -o 'https://[a-z0-9-]*\\.trycloudflare\\.com' | head -1",
     "test": "vitest"
   },
